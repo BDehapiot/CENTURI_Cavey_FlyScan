@@ -10,17 +10,17 @@ from skimage.measure import regionprops
 from skimage.filters.rank import gradient
 from skimage.draw import rectangle_perimeter
 from skimage.filters import threshold_triangle
-from skimage.morphology import disk, dilation, remove_small_objects, label
+from skimage.morphology import disk, dilation, erosion, remove_small_objects, label
 
 #%% Inputs
-RootPath = 'D:/CurrentTasks/CENTURIProject_IBDM_MatthieuCavey'
-Filename = '/Chamber9(Dark)_(red)_RSize.tif'
+RootPath = 'D:/CurrentTasks/CENTURIProject_IBDM_MatthieuCavey/21-02-05_TestMovies'
+Filename = '/21-02-05_Pi00.tif'
 
 # General options
-threshCoeff = 2 # adjust auto thresholding (the smaller the more sensitive segmentation) (for test ml = 0.5)
+threshCoeff = 0.5 # adjust auto thresholding (the smaller the more sensitive segmentation)
 
 # Advanced options
-BinMinSize1 = 500 #
+BinMinSize1 = 250 # remove binary objects smaller than BinMinSize1
 
 #%% Open stack
 
@@ -36,6 +36,9 @@ BG = np.mean(Stack,0)
 BGSub = Stack-BG 
 BGSub = invert(BGSub)
 
+# with napari.gui_qt():
+#     viewer = napari.view_image(BGSub)
+
 #%% Get BinaryMask (skimage) 
 
 thresh = threshold_triangle(BGSub)
@@ -46,6 +49,7 @@ def FlyScanBinaryMask(Input):
     BinaryMask = np.array(BinaryMask, dtype=bool) # Convert to boolean
     BinaryMask = remove_small_objects(BinaryMask, min_size=BinMinSize1)
     BinaryMask = dilation(BinaryMask)
+    
     # Label objects
     Labels = label(BinaryMask, connectivity=1)
     # Get gradient of the image
@@ -95,9 +99,9 @@ MergedProps['area'] = MergedProps['area']/np.mean(MergedProps['area'])
 MergedProps['grd_SD'] = MergedProps['grd_SD']/np.mean(MergedProps['grd_SD'])
 MergedProps['grd_Quant'] = MergedProps['grd_Quant']/np.mean(MergedProps['grd_Quant'])
 
-#%% Make a display
+#%% Make a Display
 
-Display = np.zeros([nT,nY,nX])
+TrackedObjects = np.zeros([nT,nY,nX])
 for i in range(len(MergedProps)):
     T = MergedProps['timepoint'][i]
     grd_SD = MergedProps['grd_SD'][i]
@@ -106,32 +110,43 @@ for i in range(len(MergedProps)):
     ctrd_Y = MergedProps['ctrd_Y'][i].astype(int)
 
     # Draw detection squares
-    rr, cc = rectangle_perimeter((ctrd_Y-50,ctrd_X-50), (ctrd_Y+50,ctrd_X+50), shape=Display[T,:,:].shape)
-    Display[T,:,:][rr, cc] = 255 
+    rr, cc = rectangle_perimeter((ctrd_Y-50,ctrd_X-50), (ctrd_Y+50,ctrd_X+50), shape=TrackedObjects[T,:,:].shape)
+    TrackedObjects[T,:,:][rr, cc] = 255 
     
     # Draw text
     font = cv2.FONT_HERSHEY_COMPLEX_SMALL
-    if grd_SD <= 1.1 and grd_Quant <= 1.1:
-        Display[T,:,:] = cv2.putText(Display[T,:,:],'ceil',(ctrd_X-45,ctrd_Y-35), font, 0.75, (255, 255, 255), 1, cv2.LINE_AA)
-    elif grd_SD > 1.1 and grd_Quant > 1.1:
-        Display[T,:,:] = cv2.putText(Display[T,:,:],'floor',(ctrd_X-45,ctrd_Y-35), font, 0.75, (255, 255, 255), 1, cv2.LINE_AA)
+    TrackedObjects[T,:,:] = cv2.putText(TrackedObjects[T,:,:],str(i),(ctrd_X+15,ctrd_Y-35), font, 0.75, (255, 255, 255), 1, cv2.LINE_AA)
+    # if grd_SD <= 1.1 and grd_Quant <= 1.1:
+    #     TrackedObjects[T,:,:] = cv2.putText(TrackedObjects[T,:,:],'X',(ctrd_X-45,ctrd_Y-35), font, 0.75, (255, 255, 255), 1, cv2.LINE_AA)
+    # elif grd_SD > 1.1 and grd_Quant > 1.1:
+    #     TrackedObjects[T,:,:] = cv2.putText(TrackedObjects[T,:,:],'O',(ctrd_X-45,ctrd_Y-35), font, 0.75, (255, 255, 255), 1, cv2.LINE_AA)
 
-with napari.gui_qt():
-    viewer = napari.view_image(Display)
-    
+# Merge layers
 
-#%% Open stack in napari
+
+
+# BinaryOutlines = np.zeros([nT,nY,nX]).astype('uint8')
+# BinaryMask = BinaryMask.astype('uint8')*255
+# TrackedObjects = TrackedObjects.astype('uint8')*255
+# for i in range(nT):
+#     BinaryOutlines[i,:,:,] = np.subtract(BinaryMask[i,:,:,],erosion(BinaryMask[i,:,:,],disk(1)))
+
+# Display = np.add(TrackedObjects,BinaryOutlines)
+# Display = np.add(Display,Stack) 
+# Display = np.zeros([nT,nY,nX]).astype('uint8')
+# Display = np.add(Stack,BinaryOutlines)
+# Display = np.add(Display,TrackedObjects)
 
 # with napari.gui_qt():
-#     viewer = napari.view_image(temp)
+#     viewer = napari.view_image(Display)
+
     
 #%% Save datas
 
 # Change data type
-BinaryMask = BinaryMask.astype('uint8')*255
-Display = Display.astype('uint8')
+# BinaryMask = BinaryMask.astype('uint8')*255
+# TrackedObjects = TrackedObjects.astype('uint8')
 
-# Saving
-io.imsave(RootPath+Filename[0:-4]+'_BinaryMask.tif', BinaryMask, check_contrast=True)
-io.imsave(RootPath+Filename[0:-4]+'_Gradient.tif', Gradient, check_contrast=True)
-io.imsave(RootPath+Filename[0:-4]+'_Display.tif', Display, check_contrast=True)
+# # Saving
+# io.imsave(RootPath+Filename[0:-4]+'_Gradient.tif', Gradient, check_contrast=True)
+# io.imsave(RootPath+Filename[0:-4]+'_Display.tif', Display, check_contrast=True)
