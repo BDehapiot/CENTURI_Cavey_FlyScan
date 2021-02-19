@@ -14,14 +14,14 @@ from skimage.morphology import disk, dilation, erosion, remove_small_objects, la
 
 #%% Inputs
 RootPath = 'D:/CurrentTasks/CENTURIProject_IBDM_MatthieuCavey/21-02-05_TestMovies'
-Filename = '/21-02-05_Pi04_DUP.tif'
-ROIMaskname = '/Pi04_ROIMask.tif'
+Filename = '/Old_Pi05_BrightAdjusted.tif'
+ROIMaskname = '/Old_Pi05_BrightAdjusted_ROIMask.tif'
 
 # General options
 threshCoeff = 5 # adjust auto thresholding (the smaller the more sensitive segmentation)
 
 # Display options
-ShowBinaryOutlines = 0
+ShowBinaryOutlines = 1
 ShowROIOutlines = 1
 
 # Advanced options
