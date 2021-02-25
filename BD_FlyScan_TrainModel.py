@@ -1,54 +1,60 @@
 #%% Initialize
 import os
-import numpy as np
+import joblib
 import pandas as pd
-import matplotlib.pyplot as plt  
-from sklearn import neighbors as nn
+
 from sklearn import naive_bayes as nb
-from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 #%% Inputs
-ROOTPATH = 'D:/CurrentTasks/CENTURIProject_IBDM_MatthieuCavey/21-02-05_TestMovies/ModelTraining'
-DataFilename = '/ClassData_Pi00-01-02.csv'
-TestDataFilename = '/ClassData_OldTest.csv'
+ROOTPATH = 'D:/CurrentTasks/CENTURIProject_IBDM_MatthieuCavey/21-02-05_TestMovies/'
 
-#%% Open data
-class_data = pd.read_csv(RootPath+DataFilename, sep=';') 
-test_data = pd.read_csv(RootPath+TestDataFilename, sep=';') 
-X = class_data[['area', 'grd_SD', 'grd_Quant']] # data without class
-y = class_data[['class']] # class only
-X_test = test_data
+#%% Get data
 
-#%% Train model
+def get_data():
+    '''Enter function general description + arguments'''
+    dirlist = os.listdir(ROOTPATH)
+    merged_props = pd.DataFrame(columns=['timepoint', 'label', 'area', 'ctrd_X','ctrd_Y', 'grd_SD', 'circularity'])
+    merged_class = pd.DataFrame(columns=['class'])
+    for temp_name in dirlist:
+        if 'props' in temp_name:
+            props_path = (ROOTPATH+temp_name)
+            class_path = (ROOTPATH+temp_name[0:-4]+'_class.csv')
+            if os.path.exists(class_path) == True:
+                temp_props = pd.read_csv(props_path, sep=',') 
+                temp_class = pd.read_csv(class_path, sep=',') 
+                merged_props = pd.concat([merged_props, temp_props], ignore_index=True)   
+                merged_class = pd.concat([merged_class, temp_class], ignore_index=True)
+    
+    return merged_props, merged_class
 
-# # Generate random training dataset
-# Xtrain, Xtest, ytrain, ytest = train_test_split(X,y,test_size=0.5, random_state=1) 
+#%% Train model 
 
-clf = nb.GaussianNB()  
-clf.fit(X, y)
-test_class = clf.predict(X_test)
+def train_model():
+    '''Enter function general description + arguments'''
+    # Extract and format data
+    X = merged_props[['area', 'grd_SD', 'circularity']] # props
+    y = merged_class[['class']] # class
+    X = X.to_numpy(float)
+    y = y.to_numpy(float)
+    # Standardize data
+    scaler = StandardScaler()
+    X = scaler.fit_transform(X)
+    # Train naive bayes classifier
+    clf = nb.GaussianNB()  
+    clf.fit(X, y)
+    
+    return clf
 
+#%% Execute
 
+# Get data
+merged_props, merged_class = get_data()
 
+# Train model 
+clf = train_model()
 
-# # Determine KNeighborsClassifier hyperparameters
-# krange = np.arange(1, 20, dtype=int)
-# erreurs = np.zeros(len(krange), dtype=float)
-# i=0
-# for k in krange:
-#     clf = nn.KNeighborsClassifier(k) 
-#     clf.fit(Xtrain,ytrain)
-#     erreurs[i]=1-clf.score(Xtest,ytest)   
-#     i=i+1
-# plt.plot(krange,erreurs)
+# Save model
+joblib.dump(clf, ROOTPATH+'BD_FlyScan_Model.pkl') 
 
-# # Train KNeighborsClassifier
-# clf = nn.KNeighborsClassifier(6) 
-# clf.fit(Xtrain,ytrain)
-
-
-
-
-
-
-
+#%% temp
