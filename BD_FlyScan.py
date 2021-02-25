@@ -12,6 +12,9 @@ from skimage.draw import rectangle_perimeter
 from skimage.segmentation import clear_border
 from skimage.morphology import disk, dilation, erosion, remove_small_objects, label
 
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
 #%% Inputs
 RootPath = 'D:/CurrentTasks/CENTURIProject_IBDM_MatthieuCavey/21-02-05_TestMovies'
 Filename = '/Old_Pi05_BrightAdjusted.tif'
@@ -65,12 +68,6 @@ def FlyScanBinaryMask(Input):
     
     return BinaryMask, Labels, Gradient
 
-# BinaryMask = np.zeros([nT,nY,nX])
-# Labels = np.zeros([nT,nY,nX])
-# Gradient = np.zeros([nT,nY,nX])
-# for i in range(nT):
-#     BinaryMask[i,:,:],Labels[i,:,:],Gradient[i,:,:] = FlyScanBinaryMask(BGSub[i,:,:])
-
 # Parallel processing
 from joblib import Parallel, delayed  
 OutputList = Parallel(n_jobs=35)(delayed(FlyScanBinaryMask)(BGSub[i,:,:]) for i in range(nT))
@@ -88,13 +85,23 @@ Gradient = np.stack(SubList3, axis=0)
 
 # Detect central circle
 ROIMaskLabel = label(ROIMask,connectivity=1);
-Unique = np.unique(ROIMaskLabel)
-tempProps = regionprops(ROIMaskLabel)
+for prop in regionprops(ROIMaskLabel):
+    if prop.eccentricity < 0.1:
+        ROIMaskLabel[ROIMaskLabel == prop.label] = 2
+    else:
+        ROIMaskLabel[ROIMaskLabel == prop.label] = 1        
+        
+        
+with napari.gui_qt():
+    viewer = napari.view_image(ROIMaskLabel)
+
 for i in range(len(Unique)-1):
     if tempProps[i].eccentricity < 0.1:
         ROIMaskLabel[ROIMaskLabel == tempProps[i].label] = 2
     else:
         ROIMaskLabel[ROIMaskLabel == tempProps[i].label] = 1
+        
+1/0        
                 
 # Get up and down horizontal limits
 YLimits = np.mean(ROIMask,axis=1)
@@ -131,10 +138,18 @@ for i in range(nT):
                 tempProps.at[j,'class'] = np.nan
                 MergedProps = pd.concat([MergedProps, tempProps],ignore_index=True)     
     
-# Normalize data
-MergedProps['area'] = MergedProps['area']/np.mean(MergedProps['area'])
-MergedProps['grd_SD'] = MergedProps['grd_SD']/np.mean(MergedProps['grd_SD'])
-MergedProps['grd_Quant'] = MergedProps['grd_Quant']/np.mean(MergedProps['grd_Quant'])
+# Standardize data
+data = MergedProps[['area', 'grd_SD', 'grd_Quant']] # data
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(data)
+
+# Run PCA
+pca = PCA(n_components=3)
+pca.fit(scaled_data)
+x_pca = pca.transform(scaled_data)
+explained_variance = pca.component
+stop
+
 
 #%% Make a Display
 
