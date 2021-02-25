@@ -1,4 +1,5 @@
 #%% Initialize
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt  
@@ -7,7 +8,7 @@ from sklearn import naive_bayes as nb
 from sklearn.model_selection import train_test_split
 
 #%% Inputs
-RootPath = 'D:/CurrentTasks/CENTURIProject_IBDM_MatthieuCavey/21-02-05_TestMovies/ModelTraining'
+ROOTPATH = 'D:/CurrentTasks/CENTURIProject_IBDM_MatthieuCavey/21-02-05_TestMovies/ModelTraining'
 DataFilename = '/ClassData_Pi00-01-02.csv'
 TestDataFilename = '/ClassData_OldTest.csv'
 
